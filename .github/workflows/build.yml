@@ -2,8 +2,11 @@ name: Build FreeBSD Binary
 
 on:
   schedule:
-    - cron: '0 */12 * * *'  # Check every 12 hours
-  workflow_dispatch:  # Manual trigger
+    - cron: '0 */12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write  # This is the key change
 
 jobs:
   check-and-build:
@@ -42,5 +45,3 @@ jobs:
         name: FreeBSD Build ${{ steps.check.outputs.last_commit }}
         draft: false
         prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
