@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # This is the key change
+  contents: write
 
 jobs:
   check-and-build:
@@ -18,30 +18,48 @@ jobs:
         repository: 'gooaclok819/sublinkX'
         fetch-depth: 1
         
+    - name: Load last build commit
+      id: last_build
+      run: |
+        echo "last_build=$(cat .last_build 2>/dev/null || echo '')" >> $GITHUB_OUTPUT
+        
     - name: Check for new commits
       id: check
       run: |
         git fetch origin
-        LAST_COMMIT=$(git rev-parse HEAD)
-        echo "last_commit=$LAST_COMMIT" >> $GITHUB_OUTPUT
+        CURRENT_COMMIT=$(git rev-parse HEAD)
+        echo "current_commit=$CURRENT_COMMIT" >> $GITHUB_OUTPUT
+        if [ "${{ steps.last_build.outputs.last_build }}" != "$CURRENT_COMMIT" ]; then
+          echo "should_build=true" >> $GITHUB_OUTPUT
+        fi
         
     - name: Set up Go
-      if: steps.check.outputs.last_commit != ''
+      if: steps.check.outputs.should_build == 'true'
       uses: actions/setup-go@v4
       with:
         go-version: '1.21'
 
     - name: Build FreeBSD binary
-      if: steps.check.outputs.last_commit != ''
+      if: steps.check.outputs.should_build == 'true'
       run: |
         GOOS=freebsd GOARCH=amd64 go build -o sublinkX-freebsd-amd64
       
     - name: Create Release
-      if: steps.check.outputs.last_commit != ''
+      if: steps.check.outputs.should_build == 'true'
       uses: softprops/action-gh-release@v1
       with:
         files: sublinkX-freebsd-amd64
-        tag_name: freebsd-${{ steps.check.outputs.last_commit }}
-        name: FreeBSD Build ${{ steps.check.outputs.last_commit }}
+        tag_name: freebsd-${{ steps.check.outputs.current_commit }}
+        name: FreeBSD Build ${{ steps.check.outputs.current_commit }}
         draft: false
         prerelease: false
+
+    - name: Update last build commit
+      if: steps.check.outputs.should_build == 'true'
+      run: |
+        echo "${{ steps.check.outputs.current_commit }}" > .last_build
+        git config --global user.email "action@github.com"
+        git config --global user.name "GitHub Action"
+        git add .last_build
+        git commit -m "Update last build commit"
+        git push
