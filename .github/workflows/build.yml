@@ -46,7 +46,7 @@ jobs:
       if: steps.check.outputs.should_build == 'true'
       run: |
         cd sublinkX
-        GOOS=freebsd GOARCH=amd64 go build -o ../sublinkX-freebsd-amd64
+        GOOS=freebsd GOARCH=amd64 go build -o ../sublinkX-freebsd-amd64 -ldflags="-s -w"
       
     - name: Create Release
       if: steps.check.outputs.should_build == 'true'
